@@ -44,21 +44,25 @@ class LWRDataset(data.Dataset):
         return x, initial_i, boundary_i, y 
 
 class LWRDataset_res(data.Dataset): 
-    def __init__(self, xi, data, initial, boundary): 
+    def __init__(self, xi, input, output, initial, boundary_in, boundary_out): 
         self.xi = xi
-        self.data = data 
+        self.input = input 
+        self.output = output
         self.initial = initial
-        self.boundary = boundary
+        self.boundary_in = boundary_in
+        self.boundary_out = boundary_out
+
     def __len__(self):
-        return len(self.data)
+        return len(self.input)
 
     def __getitem__(self, idx): 
         xi = self.xi[idx] 
-        x = self.data[idx] 
-        y = self.data[idx][:, -12:, 1:]
+        x = self.input[idx] 
+        y = self.output[idx][:, :, 1:]
         initial_i = self.initial[idx]
-        boundary_i = self.boundary[idx]
-        return xi, initial_i, boundary_i, x, y 
+        boundary_in = self.boundary_in[idx]
+        boundary_out = self.boundary_out[idx]
+        return xi, initial_i, boundary_in, boundary_out, x, y 
 
 def train_epoch(model, train_loader, optimizer, criterion): 
     preds = []
@@ -131,14 +135,14 @@ def train_LWR(model, train_loader, optimizer, criterion, steps):
     
     return preds, trues, np.mean(mse) 
 
-def train_hybrid_LWR(model, train_loader, optimizer, criterion, steps): 
+def train_hybrid_LWR(model, train_loader, optimizer, criterion, steps, pred_len): 
     preds = []
     trues = []
     mse = [] 
     model.train()
-    for xi, initial, boundary, x, y in train_loader: 
-        xi, initial, boundary, x, y = xi.to(device), initial.to(device), boundary.to(device), x.to(device), y.to(device) 
-        pred = model(xi, x, initial, boundary, steps) 
+    for xi, initial, boundary_in, boundary_out, x, y in train_loader: 
+        xi, initial, boundary_in, boundary_out, x, y = xi.to(device), initial.to(device), boundary_in.to(device), boundary_out.to(device), x.to(device), y.to(device) 
+        pred = model(xi, x, initial, boundary_in, boundary_out, steps, pred_len) 
         loss = 0
         loss = criterion(pred, y)
         mse.append(loss.item())
@@ -176,16 +180,16 @@ def eval_LWR(model, val_loader, criterion, steps):
     
     return preds, trues, np.mean(mse) 
 
-def eval_hybrid_LWR(model, val_loader, criterion, steps): 
+def eval_hybrid_LWR(model, val_loader, criterion, steps, pred_len): 
     preds = []
     trues = []
     mse = []
     
     model.eval()
     with torch.no_grad():
-        for xi, initial, boundary, x, y in val_loader: 
-            xi, initial, boundary, x, y = xi.to(device), initial.to(device), boundary.to(device), x.to(device), y.to(device) 
-            pred = model(xi, x, initial, boundary, steps) 
+        for xi, initial, boundary_in, boundary_out, x, y in val_loader: 
+            xi, initial, boundary_in, boundary_out, x, y = xi.to(device), initial.to(device), boundary_in.to(device), boundary_out.to(device), x.to(device), y.to(device) 
+            pred = model(xi, x, initial, boundary_in, boundary_out, steps, pred_len) 
             loss = 0
             loss = criterion(pred, y)
             mse.append(loss.item()) 
@@ -249,15 +253,15 @@ def test_LWR(model, test_loader, criterion, steps):
 
     return preds, trues, np.mean(mse)
 
-def test_hybrid_LWR(model, val_loader, criterion, test_sensors, steps): 
+def test_hybrid_LWR(model, val_loader, criterion, test_sensors, steps, pred_len): 
     preds = []
     trues = []
     mse = [] 
     model.eval()
     with torch.no_grad():
-        for xi, initial, boundary, x, y in val_loader: 
-            xi, initial, boundary, x, y = xi.to(device), initial.to(device), boundary.to(device), x.to(device), y.to(device) 
-            pred = model(xi.long(), x, initial, boundary, steps)  
+        for xi, initial, boundary_in, boundary_out, x, y in val_loader: 
+            xi, initial, boundary_in, boundary_out, x, y = xi.to(device), initial.to(device), boundary_in.to(device), boundary_out.to(device), x.to(device), y.to(device) 
+            pred = model(xi, x, initial, boundary_in, boundary_out, steps, pred_len) 
             loss = 0
             loss = criterion(pred[:, :, :, test_sensors], y[:, :, :, test_sensors])
             mse.append(loss.item()) 

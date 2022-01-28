@@ -166,14 +166,14 @@ class LWR_batch_version(nn.Module):
             hvf=self.vf[idx.long()] #.repeat(batch_size, 1)
 
             nk[:, 1:] = self.k[n-1][:, 1:] - 0.0016 * self.dt / self.dx * (self.q[n-1][:, 1:]-self.q[n-1][:, :-1]) 
-#             idx = nk < 0. 
-#             nk[idx] = 0.01 
+            idx = nk < 0. 
+            nk[idx] = 0.01 
             nu[:, 1:] = hvf[1:] * (1 - nk[:, 1:] / hkappa[1:])
-#             idx = nu < 0.
-#             nu[idx] = 2  
+            idx = nu < 0.
+            nu[idx] = 2  
             nq[:, 1:] = nk[:, 1:] * nu[:, 1:] 
-#             idx = nq < 0.
-#             nq[idx] = 0.2  
+            idx = nq < 0.
+            nq[idx] = 0.2  
             
             ### 
             # Method of lines + RK4 method 
